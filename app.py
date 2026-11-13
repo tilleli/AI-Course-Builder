@@ -1,4 +1,31 @@
+import os
+from openai import OpenAI
+from dotenv import load_dotenv
 
+# Charger la clé OpenRouter depuis le fichier .env
+load_dotenv()
+cle = os.getenv("OPENROUTER_API_KEY")
+print("Clé lue :", repr(cle[:12]) if cle else None, "| longueur :", len(cle) if cle else 0)
+
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=os.getenv("OPENROUTER_API_KEY"),
+)
+
+# Test de connexion
+try:
+    response = client.chat.completions.create(
+        model="inclusionai/ling-3.2-flash:free",
+        messages=[
+            {
+                "role": "user",
+                "content": "Dis juste 'Bonjour Tilla, la connexion avec OpenRouter fonctionne !'"
+            }
+        ],
+    )
+    print(response.choices[0].message.content)
+except Exception as e:
+    print("Erreur :", e)
 import streamlit as st
 
 # Configuration de la page
