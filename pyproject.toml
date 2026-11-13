@@ -1,0 +1,21 @@
+[project]
+name = "ai-course-builder"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "google-genai>=3.3.0",
+    "pillow>=13.0.0",
+    "pymupdf>=2.1",
+    "python-docx>=1.2.0",
+    "streamlit>=1.67.0",
+    "weasyprint>=70.0",
+]
+
+[project.scripts]
+ai-course-builder = "ai_course_builder:main"
+
+[build-system]
+requires = ["uv_build>=0.13.7,<0.14.0"]
+build-backend = "uv_build"
