@@ -16,8 +16,7 @@ def lire_image_avec_ia(liste_photos):
     
     # On prépare la liste des contenus à envoyer
     contenu = [
-        {"type": "text", "text": "Voici les photos de mon cours. Transcris TOUT le texte de ces images, dans l'ordre exact des pages. Ne saute aucun mot. Sépare chaque page par '--- Page X ---'."}
-    ]
+        {"type": "text", "text": "Voici les photos de mon cours. Regarde attentivement en bas à droite de chaque image : il y a un petit numéro de page entouré d'un cercle. Utilise CE numéro pour organiser le texte. Transcris tout le texte de chaque image sans rien sauter, et sépare chaque page par '--- Page [numéro du cercle] ---'."}    ]
     
     # On ajoute chaque image à la liste
     for photo in liste_photos:
