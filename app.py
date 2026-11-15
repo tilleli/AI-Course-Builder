@@ -1,46 +1,42 @@
+import streamlit as st
 import os
+import base64
 from openai import OpenAI
 from dotenv import load_dotenv
 
-# Charger la clé OpenRouter depuis le fichier .env
+# Charger la clé
 load_dotenv()
-cle = os.getenv("OPENROUTER_API_KEY")
-print("Clé lue :", repr(cle[:12]) if cle else None, "| longueur :", len(cle) if cle else 0)
 
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=os.getenv("OPENROUTER_API_KEY"),
-)
-
-# Test de connexion
-try:
+def lire_image_avec_ia(image_bytes):
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=os.getenv("OPENROUTER_API_KEY"),
+    )
+    
+    # Encoder l'image en base64
+    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+    
+    # Demander à l'IA de lire
     response = client.chat.completions.create(
-        model="inclusionai/ling-3.2-flash:free",
+        model="nvidia/nemotron-3.5-super-vl:free",
         messages=[
             {
                 "role": "user",
-                "content": "Dis juste 'Bonjour Tilla, la connexion avec OpenRouter fonctionne !'"
+                "content": [
+                    {"type": "text", "text": "Transcris tout le texte que tu vois sur cette image. Sois précis."},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
+                ]
             }
-        ],
+        ]
     )
-    print(response.choices[0].message.content)
-except Exception as e:
-    print("Erreur :", e)
-import streamlit as st
+    return response.choices[0].message.content
 
-# Configuration de la page
-st.set_page_config(
-    page_title="AI Course Builder",
-    page_icon="📚",
-    layout="centered"
-)
 
-# Titre de l'application
+# --- Interface Streamlit ---
+st.set_page_config(page_title="AI Course Builder", page_icon="📚")
 st.title("📚 AI Course Builder")
-
 st.write("Transformez vos documents en un cours complet.")
 
-# Importation des documents
 st.subheader("Importer vos documents")
 
 photos = st.file_uploader(
@@ -54,11 +50,15 @@ pdf = st.file_uploader(
     type=["pdf"]
 )
 
-image = st.file_uploader(
-    "Ajouter une image complémentaire",
-    type=["jpg", "jpeg", "png"]
-)
-
-# Bouton de génération
 if st.button("Générer mon cours"):
-    st.info("La génération du cours sera ajoutée à la prochaine étape.")
+    if not photos and not pdf:
+        st.warning("Ajoute au moins un fichier.")
+    else:
+        with st.spinner("L'IA lit vos documents... (cela peut prendre 30 secondes)"):
+            if photos:
+                image_bytes = photos[0].read()
+                texte_extrait = lire_image_avec_ia(image_bytes)
+                st.success("Texte extrait par l'IA :")
+                # --- MEMOIRE CACHE ---
+                # On range le texte dans la boîte "texte_cours" pour s'en souvenir plus tard
+                st.session_state.texte_cours = texte_extrait
