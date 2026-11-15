@@ -8,23 +8,33 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- FONCTION 1 : LIRE L'IMAGE ---
-def lire_image_avec_ia(image_bytes):
+def lire_image_avec_ia(liste_photos):
     client = OpenAI(
         base_url="https://openrouter.ai/api/v1",
         api_key=os.getenv("OPENROUTER_API_KEY"),
     )
     
-    image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+    # On prépare la liste des contenus à envoyer
+    contenu = [
+        {"type": "text", "text": "Voici les photos de mon cours. Transcris TOUT le texte de ces images, dans l'ordre exact des pages. Ne saute aucun mot. Sépare chaque page par '--- Page X ---'."}
+    ]
     
+    # On ajoute chaque image à la liste
+    for photo in liste_photos:
+        image_bytes = photo.read()  # <--- C'est ici qu'on lit le fichier
+        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
+        contenu.append({
+            "type": "image_url", 
+            "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}
+        })
+    
+    # On envoie tout d'un coup
     response = client.chat.completions.create(
         model="nvidia/nemotron-3.5-super-vl:free",
         messages=[
             {
                 "role": "user",
-                "content": [
-                    {"type": "text", "text": "Transcris tout le texte que tu vois sur cette image. Sois précis."},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_base64}"}}
-                ]
+                "content": contenu
             }
         ]
     )
@@ -92,10 +102,11 @@ if st.button("Générer mon cours"):
     else:
         with st.spinner("L'IA lit vos documents..."):
             if photos:
-                image_bytes = photos[0].read()
-                texte_extrait = lire_image_avec_ia(image_bytes)
+                # On envoie la liste complète des photos à la fonction
+                texte_extrait = lire_image_avec_ia(photos)
+                
                 st.session_state.texte_cours = texte_extrait
-                st.success("Texte extrait !")
+                st.success(f"{len(photos)} pages lues avec succès !")
         
         # --- ÉTAPE 2 : LE STYLE TILLA ---
         with st.spinner("Génération du cours avec le Style Tilla... (environ 30 secondes)"):
