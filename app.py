@@ -13,6 +13,8 @@ def lire_image_avec_ia(liste_photos):
     client = OpenAI(
         base_url="https://openrouter.ai/api/v1",
         api_key=os.getenv("OPENROUTER_API_KEY"),
+        timeout=180.0,
+        max_retries=3
     )
     
     contenu = [
@@ -29,21 +31,17 @@ def lire_image_avec_ia(liste_photos):
     
     response = client.chat.completions.create(
         model="nvidia/nemotron-3.5-super-vl:free",
-        messages=[
-            {
-                "role": "user",
-                "content": contenu
-            }
-        ]
+        messages=[{"role": "user", "content": contenu}]
     )
     return response.choices[0].message.content
-
 
 # --- FONCTION 2 : APPLIQUER LE STYLE TILLA ---
 def generer_style_tilla(texte_extrait):
     client = OpenAI(
         base_url="https://openrouter.ai/api/v1",
         api_key=os.getenv("OPENROUTER_API_KEY"),
+        timeout=180.0,
+        max_retries=3
     )
     
     with open("templates/modele_tilla.html", "r", encoding="utf-8") as f:
@@ -66,142 +64,144 @@ def generer_style_tilla(texte_extrait):
     
     response = client.chat.completions.create(
         model="nvidia/nemotron-3.5-super-vl:free",
-        messages=[
-            {"role": "user", "content": consigne}
-        ],
+        messages=[{"role": "user", "content": consigne}],
         temperature=0.2 
     )
-    
     return response.choices[0].message.content
 
+# --- INTERFACE STREAMLIT DE BASE ---
+st.set_page_config(page_title="AI Course Builder", page_icon="logo.png", layout="wide")
+st.markdown("""
+<style>
+    /* 1. Le fond bleu du PPT */
+    .stApp {
+        background-color: #2F3C7E; 
+    }
+    
+    /* 2. On force les titres et les labels au-dessus des uploads en blanc */
+    h1, h2, h3, h4, h5, h6, label[data-testid="stWidgetLabel"] p {
+        color: white !important;
+    }
+    
+    /* 3. On rend la boîte d'upload BLANCHE avec une bordure jaune pointillée */
+    div[data-testid="stFileUploaderDropzone"] {
+        background-color: #FFFFFF !important;
+        border: 2px dashed #F9E795 !important;
+        border-radius: 10px !important;
+    }
+    
+    /* 4. Le texte à l'intérieur de la boîte blanche doit être bleu foncé */
+    div[data-testid="stFileUploaderDropzone"] span, 
+    div[data-testid="stFileUploaderDropzone"] small {
+        color: #2F3C7E !important;
+    }
+    
+    /* 5. Le bouton "Upload" à l'intérieur de la boîte prend la couleur corail */
+    div[data-testid="stFileUploaderDropzone"] button {
+        background-color: #F96167 !important;
+        color: white !important;
+        border: none !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+st.markdown("""
+<div style="display: flex; align-items: center; gap: 15px; margin-bottom: 30px;">
+    <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@700&amp;display=swap');
+        </style>
+      </defs>
+      <circle cx="24" cy="24" r="22" fill="#F9E795" />
+      <text x="24" y="25" font-family="'Fredoka', sans-serif" font-weight="700" font-size="16" fill="#2F3C7E" text-anchor="middle" dominant-baseline="central">
+        tilla
+      </text>
+    </svg>
+    <h1 style="margin: 0; color: white; font-family: 'Fredoka', sans-serif; font-size: 32px;">
+        AI Course Builder
+    </h1>
+</div>
+""", unsafe_allow_html=True)
 
-# --- INTERFACE STREAMLIT ---
-st.set_page_config(page_title="AI Course Builder", page_icon="📚")
-st.title("📚 AI Course Builder")
-st.write("Transformez vos documents en un cours complet.")
-
-st.subheader("Importer vos documents")
-
-photos = st.file_uploader(
-    "Ajouter vos photos de cours",
-    type=["jpg", "jpeg", "png"],
-    accept_multiple_files=True
-)
-
-pdf = st.file_uploader(
-    "Ajouter votre document PDF",
-    type=["pdf"]
-)
-
-# On initialise la mémoire pour le PDF
+# Mémoire
+if "html_final" not in st.session_state:
+    st.session_state.html_final = None
 if "pdf_bytes" not in st.session_state:
     st.session_state.pdf_bytes = None
 
+# Les zones d'importation
+photos = st.file_uploader("Photos du cours", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
+pdf_input = st.file_uploader("Document PDF", type=["pdf"])
+
+st.write("") # Un peu d'espace
+
 # --- BOUTON PRINCIPAL ---
-if st.button("Générer mon cours"):
-    if not photos and not pdf:
-        st.warning("Ajoute au moins un fichier.")
+if st.button("Générer le cours", type="primary"):
+    if not photos and not pdf_input:
+        st.error("Veuillez ajouter au moins une photo.")
     else:
-        with st.spinner("L'IA lit vos documents..."):
+        with st.spinner("Lecture des documents..."):
             if photos:
                 texte_extrait = lire_image_avec_ia(photos)
-                st.session_state.texte_cours = texte_extrait
-                st.success(f"{len(photos)} pages lues avec succès !")
-        
-        with st.spinner("Génération du cours avec le Style Tilla... (environ 30 secondes)"):
-            html_final = generer_style_tilla(st.session_state.texte_cours)
-            st.session_state.html_final = html_final
-            st.session_state.pdf_bytes = None # On réinitialise le PDF
+                
+                with st.spinner("Génération du Style Tilla..."):
+                    html_final = generer_style_tilla(texte_extrait)
+                    st.session_state.html_final = html_final
+                    
+                    css_pdf = """
+                    <style>
+                        @page { size: A4; margin: 8mm 10mm !important; }
+                        .nav, details { display: none !important; } 
+                        .pb, .page-break, br[style*="page-break"] { display: none !important; }
+                        * { page-break-before: auto !important; page-break-after: auto !important; page-break-inside: auto !important; }
+                        .hero { padding: 10px 0 !important; margin-bottom: 5px !important; }
+                        .hero h1 { font-size: 22px !important; margin: 0 !important; }
+                        .hero p { font-size: 12px !important; margin: 2px 0 !important; }
+                        .badge { width: 40px !important; height: 40px !important; line-height: 40px !important; font-size: 16px !important; }
+                        body { font-size: 12px !important; line-height: 1.25 !important; }
+                        p { margin: 3px 0 !important; }
+                        h2 { font-size: 16px !important; margin: 8px 0 4px !important; padding-bottom: 2px !important; }
+                        .sec { margin: 8px 0 0 0 !important; }
+                        .rule, .ex, .warn, .ret { padding: 4px 8px !important; margin: 4px 0 !important; }
+                        .exh { margin: 6px 0 3px !important; padding: 3px 6px !important; font-size: 14px !important; }
+                        table { margin: 4px 0 !important; }
+                        table.t td, table.t th { padding: 3px !important; font-size: 11px !important; }
+                    </style>
+                    """
+                    html_optimise = html_final.replace("</head>", css_pdf + "</head>")
+                    pdf_doc = HTML(string=html_optimise).render()
+                    st.session_state.pdf_bytes = pdf_doc.write_pdf()
 
-# --- AFFICHAGE DU COURS ET DES TÉLÉCHARGEMENTS (Hors du bouton) ---
-if "html_final" in st.session_state:
-    st.subheader("Aperçu de ton cours :")
-    st.components.v1.html(st.session_state.html_final, height=800, scrolling=True)
+# --- AFFICHAGE CÔTE À CÔTE ---
+if st.session_state.html_final and st.session_state.pdf_bytes:
+    st.write("---")
     
-    # Bouton HTML
-    st.download_button(
-        label="📥 Télécharger le cours (HTML)",
-        data=st.session_state.html_final,
-        file_name="cours_style_tilla.html",
-        mime="text/html"
-    )
+    # Création des deux colonnes
+    col1, col2 = st.columns(2)
     
-    # Bouton PDF
-    if st.button("📄 Générer le PDF (Style Tilla)"):
-        with st.spinner("Création du PDF..."):
-            try:
-                # On cache juste la barre de nav et les corrections pour le PDF
-                css_pdf = """
-                <style>
-                    /* 1. Marges de la page au minimum */
-                    @page { 
-                        size: A4; 
-                        margin: 8mm 10mm !important; 
-                    }
-                    
-                    /* 2. On cache la navigation et les corrections */
-                    .nav, details { display: none !important; } 
-                    
-                    /* 3. ON DÉTRUIT TOUS LES SAUTS DE PAGE FORCÉS */
-                    .pb, .page-break, br[style*="page-break"] { 
-                        display: none !important; 
-                    }
-                    * { 
-                        page-break-before: auto !important; 
-                        page-break-after: auto !important; 
-                        page-break-inside: auto !important; 
-                    }
-                    
-                    /* 4. On écrase les espaces de la bannière bleue */
-                    .hero { padding: 10px 0 !important; margin-bottom: 5px !important; }
-                    .hero h1 { font-size: 22px !important; margin: 0 !important; }
-                    .hero p { font-size: 12px !important; margin: 2px 0 !important; }
-                    .badge { width: 40px !important; height: 40px !important; line-height: 40px !important; font-size: 16px !important; }
-                    
-                    /* 5. On tasse le texte */
-                    body { font-size: 12px !important; line-height: 1.25 !important; }
-                    p { margin: 3px 0 !important; }
-                    h2 { font-size: 16px !important; margin: 8px 0 4px !important; padding-bottom: 2px !important; }
-                    
-                    /* 6. On réduit les sections et les encadrés */
-                    .sec { margin: 8px 0 0 0 !important; }
-                    .rule, .ex, .warn, .ret { 
-                        padding: 4px 8px !important; 
-                        margin: 4px 0 !important; 
-                    }
-                    .exh { 
-                        margin: 6px 0 3px !important; 
-                        padding: 3px 6px !important; 
-                        font-size: 14px !important; 
-                    }
-                    
-                    /* 7. On tasse les tableaux */
-                    table { margin: 4px 0 !important; }
-                    table.t td, table.t th { padding: 3px !important; font-size: 11px !important; }
-                </style>
-                """
-                
-                html_optimise = st.session_state.html_final.replace("</head>", css_pdf + "</head>")
-                
-                # On génère le PDF
-                pdf_doc = HTML(string=html_optimise).render()
-                nb_pages = len(pdf_doc.pages)
-                
-                if nb_pages > 4:
-                    st.warning(f"⚠️ Attention : Le PDF fait {nb_pages} pages (max 4). L'IA a peut-être été trop bavarde.")
-                else:
-                    st.success(f"✅ PDF généré ({nb_pages} pages) !")
-                
-                st.session_state.pdf_bytes = pdf_doc.write_pdf()
-                
-            except Exception as e:
-                st.error(f"Erreur PDF : {e}")
-                
-    # Bouton de téléchargement du PDF
-    if st.session_state.pdf_bytes:
+    with col1:
+        st.subheader("Version HTML")
+        st.components.v1.html(st.session_state.html_final, height=600, scrolling=True)
+        
         st.download_button(
-            label="Télécharger le PDF",
+            label="Télécharger le HTML",
+            data=st.session_state.html_final,
+            file_name="cours_style_tilla.html",
+            mime="text/html",
+            use_container_width=True
+        )
+        
+    with col2:
+        st.subheader("Version PDF")
+        
+        base64_pdf = base64.b64encode(st.session_state.pdf_bytes).decode('utf-8')
+        pdf_display = f'<embed src="data:application/pdf;base64,{base64_pdf}#toolbar=0&navpanes=0&scrollbar=0" width="100%" height="600" type="application/pdf" />'
+        st.markdown(pdf_display, unsafe_allow_html=True)
+        
+        st.download_button(
+            label=" Télécharger le PDF",
             data=st.session_state.pdf_bytes,
             file_name="cours_style_tilla.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            use_container_width=True
         )
