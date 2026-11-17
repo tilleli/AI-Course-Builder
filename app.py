@@ -133,8 +133,51 @@ if "html_final" in st.session_state:
                 # On cache juste la barre de nav et les corrections pour le PDF
                 css_pdf = """
                 <style>
-                    .nav { display: none !important; } 
-                    details { display: none !important; } 
+                    /* 1. Marges de la page au minimum */
+                    @page { 
+                        size: A4; 
+                        margin: 8mm 10mm !important; 
+                    }
+                    
+                    /* 2. On cache la navigation et les corrections */
+                    .nav, details { display: none !important; } 
+                    
+                    /* 3. ON DÉTRUIT TOUS LES SAUTS DE PAGE FORCÉS */
+                    .pb, .page-break, br[style*="page-break"] { 
+                        display: none !important; 
+                    }
+                    * { 
+                        page-break-before: auto !important; 
+                        page-break-after: auto !important; 
+                        page-break-inside: auto !important; 
+                    }
+                    
+                    /* 4. On écrase les espaces de la bannière bleue */
+                    .hero { padding: 10px 0 !important; margin-bottom: 5px !important; }
+                    .hero h1 { font-size: 22px !important; margin: 0 !important; }
+                    .hero p { font-size: 12px !important; margin: 2px 0 !important; }
+                    .badge { width: 40px !important; height: 40px !important; line-height: 40px !important; font-size: 16px !important; }
+                    
+                    /* 5. On tasse le texte */
+                    body { font-size: 12px !important; line-height: 1.25 !important; }
+                    p { margin: 3px 0 !important; }
+                    h2 { font-size: 16px !important; margin: 8px 0 4px !important; padding-bottom: 2px !important; }
+                    
+                    /* 6. On réduit les sections et les encadrés */
+                    .sec { margin: 8px 0 0 0 !important; }
+                    .rule, .ex, .warn, .ret { 
+                        padding: 4px 8px !important; 
+                        margin: 4px 0 !important; 
+                    }
+                    .exh { 
+                        margin: 6px 0 3px !important; 
+                        padding: 3px 6px !important; 
+                        font-size: 14px !important; 
+                    }
+                    
+                    /* 7. On tasse les tableaux */
+                    table { margin: 4px 0 !important; }
+                    table.t td, table.t th { padding: 3px !important; font-size: 11px !important; }
                 </style>
                 """
                 
@@ -157,7 +200,7 @@ if "html_final" in st.session_state:
     # Bouton de téléchargement du PDF
     if st.session_state.pdf_bytes:
         st.download_button(
-            label="📥 Télécharger le PDF",
+            label="Télécharger le PDF",
             data=st.session_state.pdf_bytes,
             file_name="cours_style_tilla.pdf",
             mime="application/pdf"
