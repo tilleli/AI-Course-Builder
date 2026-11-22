@@ -85,6 +85,6 @@ streamlit run app.py
 
 ## 👩‍🏫 Auteur
 
-**Tilla** – Passionnée de transmission et de pédagogie.
+**Tilla** – Passionnée de L'IA et de pédagogie.
 
 *"Petit pas, grands progrès."*
