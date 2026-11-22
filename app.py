@@ -46,7 +46,7 @@ def lire_pdf(fichier_pdf):
     return texte
 
 # --- FONCTION 3 : APPLIQUER LE STYLE TILLA (COURS + EXOS) ---
-def generer_style_tilla(texte_cours, texte_exercices):
+def generer_style_tilla(texte_cours, texte_exercices, titre_cours, matiere, niveau):
     client = OpenAI(
         base_url="https://openrouter.ai/api/v1",
         api_key=os.getenv("OPENROUTER_API_KEY"),
@@ -59,11 +59,13 @@ def generer_style_tilla(texte_cours, texte_exercices):
     
     consigne = f"""
     Tu es un professeur de français. Voici deux textes :
+
+    1. LE TITRE DU COURS : {titre_cours}
     
-    1. LE COURS (extrait des photos) :
+    2. LE COURS (extrait des photos) :
     {texte_cours}
     
-    2. LES EXERCICES (extraits du PDF) :
+    3. LES EXERCICES (extraits du PDF) :
     {texte_exercices}
     
     Voici le code HTML de mon cours (le Style Tilla). Tu dois ABSOLUMENT garder exactement le même style, les mêmes classes CSS, les mêmes couleurs et la même structure.
@@ -150,35 +152,44 @@ if "html_final" not in st.session_state:
 if "pdf_bytes" not in st.session_state:
     st.session_state.pdf_bytes = None
 
+
+# --- LES CHAMPS DE PARAMÉTRAGE ---
+titre_cours = st.text_input("Titre du cours", placeholder="Ex: La fonction grammaticale")
+
+# On crée deux colonnes pour la matière et le niveau
+col_mat, col_niv = st.columns(2)
+with col_mat:
+    matiere = st.text_input("Matière", placeholder="Ex: Français")
+with col_niv:
+    niveau = st.text_input("Niveau", placeholder="Ex: 3ème")
+
 # Les zones d'importation
 photos = st.file_uploader("Photos du cours", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 pdf_input = st.file_uploader("Document PDF (Exercices)", type=["pdf"])
 
-st.write("") # Un peu d'espace
+st.write("") 
 
 # --- BOUTON PRINCIPAL ---
 if st.button("Générer le cours", type="primary"):
     if not photos and not pdf_input:
         st.error("Veuillez ajouter au moins une photo.")
+    elif not titre_cours or not matiere or not niveau:
+        st.warning("Veuillez remplir le titre, la matière et le niveau.")
     else:
         with st.spinner("Lecture des documents..."):
             texte_cours = ""
             texte_exercices = ""
             
-            # 1. Lecture des photos
             if photos:
                 texte_cours = lire_image_avec_ia(photos)
-                
-            # 2. Lecture du PDF
             if pdf_input:
                 texte_exercices = lire_pdf(pdf_input)
                 
             with st.spinner("Génération du Style Tilla..."):
-                # 3. Envoi à l'IA
-                html_final = generer_style_tilla(texte_cours, texte_exercices)
+                # On envoie la matière et le niveau à l'IA
+                html_final = generer_style_tilla(texte_cours, texte_exercices, titre_cours, matiere, niveau)
                 st.session_state.html_final = html_final
                 
-                # 4. Création du PDF
                 css_pdf = """
                 <style>
                     @page { size: A4; margin: 8mm 10mm !important; }
@@ -207,6 +218,10 @@ if st.button("Générer le cours", type="primary"):
 if st.session_state.html_final and st.session_state.pdf_bytes:
     st.write("---")
     
+    nom_fichier = titre_cours.strip().replace(" ", "_").lower()
+    if not nom_fichier:
+        nom_fichier = "cours_tilla"
+    
     col1, col2 = st.columns(2)
     
     with col1:
@@ -216,7 +231,7 @@ if st.session_state.html_final and st.session_state.pdf_bytes:
         st.download_button(
             label="Télécharger le HTML",
             data=st.session_state.html_final,
-            file_name="cours_style_tilla.html",
+            file_name=f"{nom_fichier}.html",
             mime="text/html",
             use_container_width=True
         )
@@ -231,7 +246,7 @@ if st.session_state.html_final and st.session_state.pdf_bytes:
         st.download_button(
             label="Télécharger le PDF",
             data=st.session_state.pdf_bytes,
-            file_name="cours_style_tilla.pdf",
+            file_name=f"{nom_fichier}.pdf",
             mime="application/pdf",
             use_container_width=True
         )
