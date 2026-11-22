@@ -90,7 +90,7 @@ def generer_style_tilla(texte_cours, texte_exercices, titre_cours, matiere, nive
     return response.choices[0].message.content
 
 # --- INTERFACE STREAMLIT ---
-st.set_page_config(page_title="Cours Facile avec tilla", page_icon="logo.png", layout="wide")
+st.set_page_config(page_title="Tilla Course Builder", page_icon="logo.png", layout="wide")
 
 st.markdown("""
 <style>
@@ -141,7 +141,7 @@ st.markdown("""
       </text>
     </svg>
     <h1 style="margin: 0; color: white; font-family: 'Fredoka', sans-serif; font-size: 32px;">
-        AI Course Builder
+        Tilla Course Builder
     </h1>
 </div>
 """, unsafe_allow_html=True)
